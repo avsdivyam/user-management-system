@@ -1,0 +1,6 @@
+database:
+  host: localhost
+  port: 5555
+  name: user-management-system
+  user: postgres
+  password: "12345"

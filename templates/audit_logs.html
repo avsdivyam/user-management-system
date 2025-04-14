@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs - User Management System{% endblock %}
+
+{% block header %}Audit Logs{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group">
+    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-funnel me-1"></i> Filter
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item filter-action" href="#" data-action="all">All Actions</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item filter-action" href="#" data-action="user_login">User Login</a></li>
+        <li><a class="dropdown-item filter-action" href="#" data-action="user_create">User Creation</a></li>
+        <li><a class="dropdown-item filter-action" href="#" data-action="user_update">User Update</a></li>
+        <li><a class="dropdown-item filter-action" href="#" data-action="user_delete">User Deletion</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item filter-action" href="#" data-action="role_create">Role Creation</a></li>
+        <li><a class="dropdown-item filter-action" href="#" data-action="role_update">Role Update</a></li>
+        <li><a class="dropdown-item filter-action" href="#" data-action="role_delete">Role Deletion</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item filter-action" href="#" data-action="service_flag_update">Service Flag Update</a></li>
+    </ul>
+</div>
+<button class="btn btn-sm btn-outline-secondary ms-2" id="refreshButton">
+    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="userFilter" class="form-label">User</label>
+                            <select class="form-select" id="userFilter">
+                                <option value="">All Users</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="resourceFilter" class="form-label">Resource</label>
+                            <select class="form-select" id="resourceFilter">
+                                <option value="">All Resources</option>
+                                <option value="users">Users</option>
+                                <option value="roles">Roles</option>
+                                <option value="permissions">Permissions</option>
+                                <option value="service_flags">Service Flags</option>
+                                <option value="auth">Authentication</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="dateRangeFilter" class="form-label">Date Range</label>
+                            <select class="form-select" id="dateRangeFilter">
+                                <option value="7">Last 7 Days</option>
+                                <option value="30" selected>Last 30 Days</option>
+                                <option value="90">Last 90 Days</option>
+                                <option value="365">Last Year</option>
+                                <option value="0">All Time</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label for="searchInput" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search in logs...">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-primary d-block w-100" id="searchButton">
+                                <i class="bi bi-search me-1"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Audit Log Entries</h5>
+                <span class="badge bg-primary" id="currentFilter">All Actions</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Resource</th>
+                                <th>Resource ID</th>
+                                <th>Details</th>
+                                <th>IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditTable">
+                            <tr>
+                                <td colspan="7" class="text-center">Loading audit logs...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <span id="paginationInfo">Showing 0-0 of 0 logs</span>
+                    </div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination" id="pagination">
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                            </li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Details Modal -->
+<div class="modal fade" id="logDetailsModal" tabindex="-1" aria-labelledby="logDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logDetailsModalLabel">Audit Log Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>ID:</strong> <span id="detailId"></span></p>
+                        <p><strong>Timestamp:</strong> <span id="detailTimestamp"></span></p>
+                        <p><strong>User:</strong> <span id="detailUser"></span></p>
+                        <p><strong>Action:</strong> <span id="detailAction"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Resource:</strong> <span id="detailResource"></span></p>
+                        <p><strong>Resource ID:</strong> <span id="detailResourceId"></span></p>
+                        <p><strong>IP Address:</strong> <span id="detailIpAddress"></span></p>
+                        <p><strong>User Agent:</strong> <span id="detailUserAgent"></span></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">Details</h6>
+                            </div>
+                            <div class="card-body">
+                                <pre id="detailDetails" class="p-3 bg-light rounded"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    const pageSize = 20;
+    let totalPages = 1;
+    let totalLogs = 0;
+    let currentAction = '';
+    let currentUserId = '';
+    let currentResource = '';
+    let currentDays = 30;
+    let currentSearch = '';
+    
+    // Load audit logs
+    async function loadAuditLogs(page = 1, action = '', userId = '', resource = '', days = 30, search = '') {
+        try {
+            const skip = (page - 1) * pageSize;
+            let url = `/api/audit/logs?skip=${skip}&limit=${pageSize}`;
+            
+            if (action) {
+                url += `&action=${encodeURIComponent(action)}`;
+            }
+            
+            if (userId) {
+                url += `&user_id=${encodeURIComponent(userId)}`;
+            }
+            
+            if (resource) {
+                url += `&resource=${encodeURIComponent(resource)}`;
+            }
+            
+            if (days > 0) {
+                url += `&days=${days}`;
+            }
+            
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+            
+            const response = await fetchWithAuth(url);
+            
+            if (response.ok) {
+                const data = await response.json();
+                const auditTable = document.getElementById('auditTable');
+                
+                if (data.logs && data.logs.length > 0) {
+                    auditTable.innerHTML = '';
+                    
+                    data.logs.forEach(log => {
+                        const row = document.createElement('tr');
+                        row.className = 'log-row';
+                        row.setAttribute('data-log-id', log.id);
+                        
+                        // Timestamp
+                        const timestampCell = document.createElement('td');
+                        timestampCell.textContent = new Date(log.timestamp).toLocaleString();
+                        
+                        // User
+                        const userCell = document.createElement('td');
+                        userCell.textContent = log.username || `User #${log.user_id}`;
+                        
+                        // Action
+                        const actionCell = document.createElement('td');
+                        const actionBadge = document.createElement('span');
+                        
+                        let badgeClass = 'bg-secondary';
+                        if (log.action.includes('create')) {
+                            badgeClass = 'bg-success';
+                        } else if (log.action.includes('update')) {
+                            badgeClass = 'bg-primary';
+                        } else if (log.action.includes('delete')) {
+                            badgeClass = 'bg-danger';
+                        } else if (log.action.includes('login')) {
+                            badgeClass = 'bg-info text-dark';
+                        }
+                        
+                        actionBadge.className = `badge ${badgeClass}`;
+                        actionBadge.textContent = log.action;
+                        actionCell.appendChild(actionBadge);
+                        
+                        // Resource
+                        const resourceCell = document.createElement('td');
+                        resourceCell.textContent = log.resource;
+                        
+                        // Resource ID
+                        const resourceIdCell = document.createElement('td');
+                        resourceIdCell.textContent = log.resource_id || '-';
+                        
+                        // Details
+                        const detailsCell = document.createElement('td');
+                        detailsCell.className = 'text-truncate';
+                        detailsCell.style.maxWidth = '200px';
+                        detailsCell.textContent = log.details || '-';
+                        
+                        // IP Address
+                        const ipCell = document.createElement('td');
+                        ipCell.textContent = log.ip_address || '-';
+                        
+                        // Add cells to row
+                        row.appendChild(timestampCell);
+                        row.appendChild(userCell);
+                        row.appendChild(actionCell);
+                        row.appendChild(resourceCell);
+                        row.appendChild(resourceIdCell);
+                        row.appendChild(detailsCell);
+                        row.appendChild(ipCell);
+                        
+                        auditTable.appendChild(row);
+                    });
+                    
+                    // Add event listeners to rows
+                    document.querySelectorAll('.log-row').forEach(row => {
+                        row.addEventListener('click', function() {
+                            const logId = this.getAttribute('data-log-id');
+                            showLogDetails(logId);
+                        });
+                    });
+                } else {
+                    auditTable.innerHTML = '<tr><td colspan="7" class="text-center">No audit logs found</td></tr>';
+                }
+                
+                // Update pagination
+                totalLogs = data.total;
+                totalPages = data.total_pages;
+                currentPage = data.page;
+                
+                updatePagination();
+                updatePaginationInfo(data.page, pageSize, data.total);
+            } else {
+                const auditTable = document.getElementById('auditTable');
+                auditTable.innerHTML = '<tr><td colspan="7" class="text-center">Failed to load audit logs</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            const auditTable = document.getElementById('auditTable');
+            auditTable.innerHTML = '<tr><td colspan="7" class="text-center">Error loading audit logs</td></tr>';
+        }
+    }
+    
+    // Update pagination controls
+    function updatePagination() {
+        const pagination = document.getElementById('pagination');
+        pagination.innerHTML = '';
+        
+        // Previous button
+        const prevItem = document.createElement('li');
+        prevItem.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+        
+        const prevLink = document.createElement('a');
+        prevLink.className = 'page-link';
+        prevLink.href = '#';
+        prevLink.textContent = 'Previous';
+        
+        if (currentPage > 1) {
+            prevLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadAuditLogs(currentPage - 1, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+            });
+        }
+        
+        prevItem.appendChild(prevLink);
+        pagination.appendChild(prevItem);
+        
+        // Page numbers
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, startPage + 4);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const pageItem = document.createElement('li');
+            pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            
+            const pageLink = document.createElement('a');
+            pageLink.className = 'page-link';
+            pageLink.href = '#';
+            pageLink.textContent = i;
+            
+            pageLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadAuditLogs(i, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+            });
+            
+            pageItem.appendChild(pageLink);
+            pagination.appendChild(pageItem);
+        }
+        
+        // Next button
+        const nextItem = document.createElement('li');
+        nextItem.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+        
+        const nextLink = document.createElement('a');
+        nextLink.className = 'page-link';
+        nextLink.href = '#';
+        nextLink.textContent = 'Next';
+        
+        if (currentPage < totalPages) {
+            nextLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadAuditLogs(currentPage + 1, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+            });
+        }
+        
+        nextItem.appendChild(nextLink);
+        pagination.appendChild(nextItem);
+    }
+    
+    // Update pagination info text
+    function updatePaginationInfo(page, pageSize, total) {
+        const start = total > 0 ? (page - 1) * pageSize + 1 : 0;
+        const end = Math.min(start + pageSize - 1, total);
+        
+        document.getElementById('paginationInfo').textContent = `Showing ${start}-${end} of ${total} logs`;
+    }
+    
+    // Show log details
+    async function showLogDetails(logId) {
+        try {
+            const response = await fetchWithAuth(`/api/audit/logs/${logId}`);
+            
+            if (response.ok) {
+                const log = await response.json();
+                
+                // Populate modal
+                document.getElementById('detailId').textContent = log.id;
+                document.getElementById('detailTimestamp').textContent = new Date(log.timestamp).toLocaleString();
+                document.getElementById('detailUser').textContent = log.username || `User #${log.user_id}`;
+                document.getElementById('detailAction').textContent = log.action;
+                document.getElementById('detailResource').textContent = log.resource;
+                document.getElementById('detailResourceId').textContent = log.resource_id || '-';
+                document.getElementById('detailIpAddress').textContent = log.ip_address || '-';
+                document.getElementById('detailUserAgent').textContent = log.user_agent || '-';
+                document.getElementById('detailDetails').textContent = log.details || '-';
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('logDetailsModal'));
+                modal.show();
+            } else {
+                const data = await response.json();
+                alert(data.detail || 'Failed to load log details');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while loading log details');
+        }
+    }
+    
+    // Load users for filter dropdown
+    async function loadUsers() {
+        try {
+            const response = await fetchWithAuth('/api/users/?limit=100');
+            
+            if (response.ok) {
+                const data = await response.json();
+                const userFilter = document.getElementById('userFilter');
+                
+                if (data.users && data.users.length > 0) {
+                    data.users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.username;
+                        userFilter.appendChild(option);
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error loading users:', error);
+        }
+    }
+    
+    // Document ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load initial data
+        loadAuditLogs();
+        loadUsers();
+        
+        // Filter by action
+        document.querySelectorAll('.filter-action').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const action = this.getAttribute('data-action');
+                currentAction = action === 'all' ? '' : action;
+                
+                // Update filter badge
+                document.getElementById('currentFilter').textContent = action === 'all' ? 'All Actions' : action;
+                
+                // Reload logs
+                loadAuditLogs(1, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+            });
+        });
+        
+        // User filter change
+        document.getElementById('userFilter').addEventListener('change', function() {
+            currentUserId = this.value;
+            loadAuditLogs(1, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+        });
+        
+        // Resource filter change
+        document.getElementById('resourceFilter').addEventListener('change', function() {
+            currentResource = this.value;
+            loadAuditLogs(1, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+        });
+        
+        // Date range filter change
+        document.getElementById('dateRangeFilter').addEventListener('change', function() {
+            currentDays = parseInt(this.value);
+            loadAuditLogs(1, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+        });
+        
+        // Search button click
+        document.getElementById('searchButton').addEventListener('click', function() {
+            currentSearch = document.getElementById('searchInput').value.trim();
+            loadAuditLogs(1, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+        });
+        
+        // Search input enter key
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                currentSearch = this.value.trim();
+                loadAuditLogs(1, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+            }
+        });
+        
+        // Refresh button click
+        document.getElementById('refreshButton').addEventListener('click', function() {
+            loadAuditLogs(currentPage, currentAction, currentUserId, currentResource, currentDays, currentSearch);
+        });
+    });
+</script>
+{% endblock %}

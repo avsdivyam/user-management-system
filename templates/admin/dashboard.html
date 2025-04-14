@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - User Management System{% endblock %}
+
+{% block header %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Total Users</h5>
+                <h2 class="card-text">{{ user_count }}</h2>
+                <p class="text-muted">{{ active_user_count }} active users</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Recent Activity</h5>
+                <h2 class="card-text">{{ activity_summary.total_logs }}</h2>
+                <p class="text-muted">In the last 7 days</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Service Status</h5>
+                <h2 class="card-text">
+                    {% set enabled_count = service_flags|selectattr('is_enabled', 'equalto', true)|list|length %}
+                    {{ enabled_count }}/{{ service_flags|length }}
+                </h2>
+                <p class="text-muted">Services enabled</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Activity by Day</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="activityChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Activity by Type</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="activityTypeChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Service Flags</h5>
+                <a href="/api/admin/service-flags" class="btn btn-sm btn-outline-primary">Manage All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for flag in service_flags %}
+                            {% if not flag.is_super_admin_only or is_super_admin %}
+                            <tr>
+                                <td>{{ flag.name }}</td>
+                                <td>{{ flag.description }}</td>
+                                <td>
+                                    <span class="badge {% if flag.is_enabled %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if flag.is_enabled %}Enabled{% else %}Disabled{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if not flag.is_super_admin_only or is_super_admin %}
+                                    <button class="btn btn-sm {% if flag.is_enabled %}btn-outline-danger{% else %}btn-outline-success{% endif %} toggle-flag" 
+                                            data-flag-id="{{ flag.id }}" data-flag-name="{{ flag.name }}">
+                                        {% if flag.is_enabled %}Disable{% else %}Enable{% endif %}
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted">Super Admin Only</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Activity by day chart
+    const activityCtx = document.getElementById('activityChart').getContext('2d');
+    const activityChart = new Chart(activityCtx, {
+        type: 'line',
+        data: {
+            labels: [{% for day in activity_summary.daily_counts %}'{{ day }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Activity Count',
+                data: [{% for day, count in activity_summary.daily_counts.items() %}{{ count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                tension: 0.1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // Activity by type chart
+    const activityTypeCtx = document.getElementById('activityTypeChart').getContext('2d');
+    const activityTypeChart = new Chart(activityTypeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for action, count in activity_summary.action_counts.items() %}'{{ action }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Activity Types',
+                data: [{% for action, count in activity_summary.action_counts.items() %}{{ count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.7)',
+                    'rgba(54, 162, 235, 0.7)',
+                    'rgba(255, 206, 86, 0.7)',
+                    'rgba(75, 192, 192, 0.7)',
+                    'rgba(153, 102, 255, 0.7)',
+                    'rgba(255, 159, 64, 0.7)',
+                    'rgba(199, 199, 199, 0.7)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                }
+            }
+        }
+    });
+    
+    // Toggle service flags
+    document.querySelectorAll('.toggle-flag').forEach(button => {
+        button.addEventListener('click', async function() {
+            const flagId = this.getAttribute('data-flag-id');
+            const flagName = this.getAttribute('data-flag-name');
+            
+            if (confirm(`Are you sure you want to toggle the "${flagName}" flag?`)) {
+                try {
+                    const response = await fetch(`/api/admin/service-flags/${flagId}/toggle`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        // Reload the page to show updated status
+                        window.location.reload();
+                    } else {
+                        const data = await response.json();
+                        alert(data.detail || 'Failed to toggle service flag');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while toggling the service flag');
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

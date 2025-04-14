@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Login - User Management System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <h2 class="text-center mb-4">User Management System</h2>
+                    
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+                    
+                    <div id="loginError" class="alert alert-danger" style="display: none;" role="alert"></div>
+                    
+                    <form id="loginForm" method="post" action="/login">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="loginButton">Login</button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <a href="/forgot-password" class="text-decoration-none">Forgot Password?</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const loginButton = document.getElementById('loginButton');
+        const loginError = document.getElementById('loginError');
+        
+        // Disable button and show loading state
+        loginButton.disabled = true;
+        loginButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...';
+        loginError.style.display = 'none';
+        
+        try {
+            // Use the OAuth2 token endpoint
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            
+            const response = await fetch('/api/token', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Store token in localStorage for JavaScript access
+                localStorage.setItem('access_token', data.access_token);
+                localStorage.setItem('user_id', data.user_id);
+                localStorage.setItem('username', data.username);
+                localStorage.setItem('roles', JSON.stringify(data.roles));
+                
+                // Set a cookie for server-side authentication
+                document.cookie = `access_token=Bearer ${data.access_token}; path=/; max-age=1800; SameSite=Lax`;
+                
+                // Redirect to dashboard
+                window.location.href = '/dashboard';
+            } else {
+                // Show error message
+                const errorData = await response.json();
+                loginError.textContent = errorData.detail || 'Login failed. Please check your username and password.';
+                loginError.style.display = 'block';
+                
+                // Reset button
+                loginButton.disabled = false;
+                loginButton.innerHTML = 'Login';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            loginError.textContent = 'An error occurred during login. Please try again.';
+            loginError.style.display = 'block';
+            
+            // Reset button
+            loginButton.disabled = false;
+            loginButton.innerHTML = 'Login';
+        }
+    });
+</script>
+{% endblock %}

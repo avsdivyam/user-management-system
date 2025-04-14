@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+
+{% block title %}Service Flags - User Management System{% endblock %}
+
+{% block header %}Service Flags{% endblock %}
+
+{% block header_buttons %}
+{% if user.is_super_admin() %}
+<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createFlagModal">
+    <i class="bi bi-plus-circle me-1"></i> New Flag
+</button>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <p>Service flags allow you to enable or disable features in the system. Toggle the switches below to change the status of each feature.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Feature Toggles</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="flagsTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Access Level</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="text-center">Loading service flags...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user.is_super_admin() %}
+<!-- Create Flag Modal -->
+<div class="modal fade" id="createFlagModal" tabindex="-1" aria-labelledby="createFlagModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createFlagModalLabel">Create New Service Flag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createFlagForm">
+                    <div class="mb-3">
+                        <label for="flagName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="flagName" name="name" required>
+                        <div class="form-text">Use lowercase with underscores (e.g., feature_name)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="flagDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="flagDescription" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="flagEnabled" name="is_enabled" checked>
+                        <label class="form-check-label" for="flagEnabled">Enabled</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Access Restrictions</label>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="flagDeveloper" name="is_developer_only">
+                            <label class="form-check-label" for="flagDeveloper">Developer Only</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="flagAdmin" name="is_admin_only">
+                            <label class="form-check-label" for="flagAdmin">Admin Only</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="flagSuperAdmin" name="is_super_admin_only">
+                            <label class="form-check-label" for="flagSuperAdmin">Super Admin Only</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitCreateFlag">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Flag Modal -->
+<div class="modal fade" id="editFlagModal" tabindex="-1" aria-labelledby="editFlagModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editFlagModalLabel">Edit Service Flag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editFlagForm">
+                    <input type="hidden" id="editFlagId">
+                    <div class="mb-3">
+                        <label for="editFlagName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="editFlagName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editFlagDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editFlagDescription" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="editFlagEnabled" name="is_enabled">
+                        <label class="form-check-label" for="editFlagEnabled">Enabled</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Access Restrictions</label>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editFlagDeveloper" name="is_developer_only">
+                            <label class="form-check-label" for="editFlagDeveloper">Developer Only</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editFlagAdmin" name="is_admin_only">
+                            <label class="form-check-label" for="editFlagAdmin">Admin Only</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editFlagSuperAdmin" name="is_super_admin_only">
+                            <label class="form-check-label" for="editFlagSuperAdmin">Super Admin Only</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitEditFlag">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Flag Modal -->
+<div class="modal fade" id="deleteFlagModal" tabindex="-1" aria-labelledby="deleteFlagModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteFlagModalLabel">Delete Service Flag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the service flag <strong id="deleteFlagName"></strong>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteFlag">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Load service flags
+    async function loadServiceFlags() {
+        try {
+            const response = await fetchWithAuth('/api/service-flags/');
+            
+            if (response.ok) {
+                const data = await response.json();
+                const flagsTable = document.getElementById('flagsTable').querySelector('tbody');
+                
+                if (data.flags && data.flags.length > 0) {
+                    flagsTable.innerHTML = '';
+                    
+                    data.flags.forEach(flag => {
+                        const row = document.createElement('tr');
+                        
+                        // Name
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = flag.name;
+                        
+                        // Description
+                        const descriptionCell = document.createElement('td');
+                        descriptionCell.textContent = flag.description || '-';
+                        
+                        // Status with toggle switch
+                        const statusCell = document.createElement('td');
+                        
+                        // Create toggle switch with improved styling
+                        const toggleContainer = document.createElement('div');
+                        toggleContainer.className = 'd-flex align-items-center';
+                        
+                        // Create the switch
+                        const toggleSwitch = document.createElement('div');
+                        toggleSwitch.className = 'form-check form-switch me-2';
+                        
+                        const toggleInput = document.createElement('input');
+                        toggleInput.className = 'form-check-input flag-toggle-switch';
+                        toggleInput.type = 'checkbox';
+                        toggleInput.id = `flag-toggle-${flag.id}`;
+                        toggleInput.checked = flag.is_enabled;
+                        toggleInput.setAttribute('data-flag-id', flag.id);
+                        toggleInput.setAttribute('data-flag-name', flag.name);
+                        
+                        // Add badge for visual indication
+                        const statusBadge = document.createElement('span');
+                        statusBadge.className = `badge ms-2 ${flag.is_enabled ? 'bg-success' : 'bg-danger'}`;
+                        statusBadge.textContent = flag.is_enabled ? 'Enabled' : 'Disabled';
+                        statusBadge.id = `flag-status-${flag.id}`;
+                        
+                        toggleSwitch.appendChild(toggleInput);
+                        toggleContainer.appendChild(toggleSwitch);
+                        toggleContainer.appendChild(statusBadge);
+                        
+                        statusCell.appendChild(toggleContainer);
+                        
+                        // Access Level
+                        const accessCell = document.createElement('td');
+                        if (flag.is_super_admin_only) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-danger';
+                            badge.textContent = 'Super Admin Only';
+                            accessCell.appendChild(badge);
+                        } else if (flag.is_admin_only) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-warning text-dark';
+                            badge.textContent = 'Admin Only';
+                            accessCell.appendChild(badge);
+                        } else if (flag.is_developer_only) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-info text-dark';
+                            badge.textContent = 'Developer Only';
+                            accessCell.appendChild(badge);
+                        } else {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-secondary';
+                            badge.textContent = 'All Users';
+                            accessCell.appendChild(badge);
+                        }
+                        
+                        // Actions
+                        const actionsCell = document.createElement('td');
+                        const btnGroup = document.createElement('div');
+                        btnGroup.className = 'btn-group';
+                        
+                        // We don't need a separate toggle button since we have the switch
+                        // Instead, add a refresh button
+                        const refreshBtn = document.createElement('button');
+                        refreshBtn.className = 'btn btn-sm btn-outline-secondary refresh-flag';
+                        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+                        refreshBtn.setAttribute('data-flag-id', flag.id);
+                        refreshBtn.setAttribute('data-bs-toggle', 'tooltip');
+                        refreshBtn.setAttribute('data-bs-title', 'Refresh Status');
+                        
+                        btnGroup.appendChild(refreshBtn);
+                        
+                        {% if user.is_super_admin() %}
+                        // Edit button
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'btn btn-sm btn-outline-primary edit-flag';
+                        editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+                        editBtn.setAttribute('data-flag-id', flag.id);
+                        editBtn.setAttribute('data-bs-toggle', 'tooltip');
+                        editBtn.setAttribute('data-bs-title', 'Edit Flag');
+                        
+                        // Delete button
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'btn btn-sm btn-outline-danger delete-flag';
+                        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                        deleteBtn.setAttribute('data-flag-id', flag.id);
+                        deleteBtn.setAttribute('data-flag-name', flag.name);
+                        deleteBtn.setAttribute('data-bs-toggle', 'tooltip');
+                        deleteBtn.setAttribute('data-bs-title', 'Delete Flag');
+                        
+                        btnGroup.appendChild(editBtn);
+                        btnGroup.appendChild(deleteBtn);
+                        {% endif %}
+                        
+                        actionsCell.appendChild(btnGroup);
+                        
+                        // Add cells to row
+                        row.appendChild(nameCell);
+                        row.appendChild(descriptionCell);
+                        row.appendChild(statusCell);
+                        row.appendChild(accessCell);
+                        row.appendChild(actionsCell);
+                        
+                        flagsTable.appendChild(row);
+                    });
+                    
+                    // Initialize tooltips
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                    
+                    // Add event listeners for toggle switches
+                    document.querySelectorAll('.flag-toggle-switch').forEach(toggle => {
+                        toggle.addEventListener('change', function() {
+                            const flagId = this.getAttribute('data-flag-id');
+                            const flagName = this.getAttribute('data-flag-name');
+                            toggleServiceFlag(flagId, flagName);
+                        });
+                    });
+                    
+                    // Add event listeners for refresh buttons
+                    document.querySelectorAll('.refresh-flag').forEach(button => {
+                        button.addEventListener('click', function() {
+                            loadServiceFlags();
+                        });
+                    });
+                    
+                    {% if user.is_super_admin() %}
+                    document.querySelectorAll('.edit-flag').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const flagId = this.getAttribute('data-flag-id');
+                            editServiceFlag(flagId);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.delete-flag').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const flagId = this.getAttribute('data-flag-id');
+                            const flagName = this.getAttribute('data-flag-name');
+                            showDeleteFlagModal(flagId, flagName);
+                        });
+                    });
+                    {% endif %}
+                } else {
+                    flagsTable.innerHTML = '<tr><td colspan="5" class="text-center">No service flags found</td></tr>';
+                }
+            } else {
+                const flagsTable = document.getElementById('flagsTable').querySelector('tbody');
+                flagsTable.innerHTML = '<tr><td colspan="5" class="text-center">Failed to load service flags</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            const flagsTable = document.getElementById('flagsTable').querySelector('tbody');
+            flagsTable.innerHTML = '<tr><td colspan="5" class="text-center">Error loading service flags</td></tr>';
+        }
+    }
+    
+    // Toggle service flag
+    async function toggleServiceFlag(flagId, flagName) {
+        try {
+            // Show loading state
+            const toggleSwitch = document.getElementById(`flag-toggle-${flagId}`);
+            const statusBadge = document.getElementById(`flag-status-${flagId}`);
+            const originalState = toggleSwitch.checked;
+            
+            // Disable the switch and show loading state
+            toggleSwitch.disabled = true;
+            statusBadge.className = 'badge ms-2 bg-secondary';
+            statusBadge.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+            
+            const response = await fetchWithAuth(`/api/service-flags/${flagId}/toggle`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                showNotification(`Service flag "${flagName}" ${data.is_enabled ? 'enabled' : 'disabled'} successfully`);
+                
+                // Update the switch to match the server state
+                toggleSwitch.checked = data.is_enabled;
+                
+                // Update the badge
+                statusBadge.className = `badge ms-2 ${data.is_enabled ? 'bg-success' : 'bg-danger'}`;
+                statusBadge.textContent = data.is_enabled ? 'Enabled' : 'Disabled';
+            } else {
+                // Revert the switch to its original state
+                toggleSwitch.checked = originalState;
+                
+                // Update the badge to match the original state
+                statusBadge.className = `badge ms-2 ${originalState ? 'bg-success' : 'bg-danger'}`;
+                statusBadge.textContent = originalState ? 'Enabled' : 'Disabled';
+                
+                const data = await response.json();
+                showNotification(data.detail || 'Failed to toggle service flag', 'danger');
+            }
+            
+            // Re-enable the switch
+            toggleSwitch.disabled = false;
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('An error occurred while toggling the service flag', 'danger');
+            
+            // Re-enable the switch and revert to original state
+            const toggleSwitch = document.getElementById(`flag-toggle-${flagId}`);
+            const statusBadge = document.getElementById(`flag-status-${flagId}`);
+            
+            if (toggleSwitch) {
+                const originalState = !toggleSwitch.checked; // Since it was already toggled
+                toggleSwitch.disabled = false;
+                toggleSwitch.checked = originalState;
+                
+                // Update the badge to match the original state
+                if (statusBadge) {
+                    statusBadge.className = `badge ms-2 ${originalState ? 'bg-success' : 'bg-danger'}`;
+                    statusBadge.textContent = originalState ? 'Enabled' : 'Disabled';
+                }
+            }
+        }
+    }
+    
+    {% if user.is_super_admin() %}
+    // Edit service flag
+    async function editServiceFlag(flagId) {
+        try {
+            const response = await fetchWithAuth(`/api/service-flags/${flagId}`);
+            
+            if (response.ok) {
+                const flag = await response.json();
+                
+                // Populate form
+                document.getElementById('editFlagId').value = flag.id;
+                document.getElementById('editFlagName').value = flag.name;
+                document.getElementById('editFlagDescription').value = flag.description || '';
+                document.getElementById('editFlagEnabled').checked = flag.is_enabled;
+                document.getElementById('editFlagDeveloper').checked = flag.is_developer_only;
+                document.getElementById('editFlagAdmin').checked = flag.is_admin_only;
+                document.getElementById('editFlagSuperAdmin').checked = flag.is_super_admin_only;
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('editFlagModal'));
+                modal.show();
+            } else {
+                const data = await response.json();
+                alert(data.detail || 'Failed to load service flag data');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while loading service flag data');
+        }
+    }
+    
+    // Show delete flag modal
+    function showDeleteFlagModal(flagId, flagName) {
+        document.getElementById('deleteFlagName').textContent = flagName;
+        
+        const confirmButton = document.getElementById('confirmDeleteFlag');
+        confirmButton.setAttribute('data-flag-id', flagId);
+        
+        const modal = new bootstrap.Modal(document.getElementById('deleteFlagModal'));
+        modal.show();
+    }
+    
+    // Create service flag
+    document.getElementById('submitCreateFlag').addEventListener('click', async function() {
+        const form = document.getElementById('createFlagForm');
+        const formData = new FormData(form);
+        
+        const flagData = {
+            name: formData.get('name'),
+            description: formData.get('description'),
+            is_enabled: formData.has('is_enabled'),
+            is_developer_only: formData.has('is_developer_only'),
+            is_admin_only: formData.has('is_admin_only'),
+            is_super_admin_only: formData.has('is_super_admin_only')
+        };
+        
+        try {
+            const response = await fetchWithAuth('/api/service-flags/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(flagData)
+            });
+            
+            if (response.ok) {
+                // Close modal and reload flags
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createFlagModal'));
+                modal.hide();
+                form.reset();
+                showNotification('Service flag created successfully');
+                loadServiceFlags();
+            } else {
+                const data = await response.json();
+                alert(data.detail || 'Failed to create service flag');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while creating the service flag');
+        }
+    });
+    
+    // Edit service flag
+    document.getElementById('submitEditFlag').addEventListener('click', async function() {
+        const flagId = document.getElementById('editFlagId').value;
+        const form = document.getElementById('editFlagForm');
+        const formData = new FormData(form);
+        
+        const flagData = {
+            name: formData.get('name'),
+            description: formData.get('description'),
+            is_enabled: document.getElementById('editFlagEnabled').checked,
+            is_developer_only: document.getElementById('editFlagDeveloper').checked,
+            is_admin_only: document.getElementById('editFlagAdmin').checked,
+            is_super_admin_only: document.getElementById('editFlagSuperAdmin').checked
+        };
+        
+        try {
+            const response = await fetchWithAuth(`/api/service-flags/${flagId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(flagData)
+            });
+            
+            if (response.ok) {
+                // Close modal and reload flags
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editFlagModal'));
+                modal.hide();
+                showNotification('Service flag updated successfully');
+                loadServiceFlags();
+            } else {
+                const data = await response.json();
+                alert(data.detail || 'Failed to update service flag');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while updating the service flag');
+        }
+    });
+    
+    // Delete service flag
+    document.getElementById('confirmDeleteFlag').addEventListener('click', async function() {
+        const flagId = this.getAttribute('data-flag-id');
+        
+        try {
+            const response = await fetchWithAuth(`/api/service-flags/${flagId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                // Close modal and reload flags
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteFlagModal'));
+                modal.hide();
+                showNotification('Service flag deleted successfully', 'danger');
+                loadServiceFlags();
+            } else {
+                const data = await response.json();
+                alert(data.detail || 'Failed to delete service flag');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while deleting the service flag');
+        }
+    });
+    {% endif %}
+    
+    // Document ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load service flags
+        loadServiceFlags();
+    });
+</script>
+{% endblock %}

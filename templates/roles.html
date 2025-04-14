@@ -1,0 +1,900 @@
+{% extends "base.html" %}
+
+{% block title %}Roles - User Management System{% endblock %}
+
+{% block header %}Role Management{% endblock %}
+
+{% block header_buttons %}
+<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createRoleModal">
+    <i class="bi bi-plus-circle me-1"></i> New Role
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search roles...">
+                            <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary" id="refreshButton">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>System Role</th>
+                                <th>Permissions</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rolesTable">
+                            <tr>
+                                <td colspan="7" class="text-center">Loading roles...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <span id="paginationInfo">Showing 0-0 of 0 roles</span>
+                    </div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination" id="pagination">
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                            </li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Role Modal -->
+<div class="modal fade" id="createRoleModal" tabindex="-1" aria-labelledby="createRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createRoleModalLabel">Create New Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createRoleForm">
+                    <div class="mb-3">
+                        <label for="roleName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="roleName" name="name" required>
+                        <div class="form-text">Use lowercase with underscores (e.g., custom_role)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="roleDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="roleDescription" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Permissions</label>
+                        <div class="row" id="permissionsCheckboxes">
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input select-all-permissions" type="checkbox" id="selectAllPermissions">
+                                    <label class="form-check-label" for="selectAllPermissions">
+                                        <strong>Select All Permissions</strong>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Will be populated dynamically -->
+                            <div class="col-md-12">
+                                <div class="d-flex justify-content-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitCreateRole">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Role Modal -->
+<div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editRoleModalLabel">Edit Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editRoleForm">
+                    <input type="hidden" id="editRoleId">
+                    <div class="mb-3">
+                        <label for="editRoleName" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="editRoleName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRoleDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editRoleDescription" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Permissions</label>
+                        <div class="row" id="editPermissionsCheckboxes">
+                            <div class="col-md-12 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input select-all-permissions" type="checkbox" id="editSelectAllPermissions">
+                                    <label class="form-check-label" for="editSelectAllPermissions">
+                                        <strong>Select All Permissions</strong>
+                                    </label>
+                                </div>
+                            </div>
+                            <!-- Will be populated dynamically -->
+                            <div class="col-md-12">
+                                <div class="d-flex justify-content-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitEditRole">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Role Modal -->
+<div class="modal fade" id="deleteRoleModal" tabindex="-1" aria-labelledby="deleteRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteRoleModalLabel">Delete Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the role <strong id="deleteRoleName"></strong>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteRole">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Permissions Modal -->
+<div class="modal fade" id="viewPermissionsModal" tabindex="-1" aria-labelledby="viewPermissionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewPermissionsModalLabel">Role Permissions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6 id="viewRoleName" class="mb-3"></h6>
+                <div class="row" id="viewPermissionsList">
+                    <!-- Will be populated dynamically -->
+                    <div class="col-md-12">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentPage = 1;
+    const pageSize = 10;
+    let totalPages = 1;
+    let totalRoles = 0;
+    let searchQuery = '';
+    let permissions = [];
+    
+    // Load roles
+    async function loadRoles(page = 1, search = '') {
+        try {
+            const skip = (page - 1) * pageSize;
+            let url = `/api/roles/?skip=${skip}&limit=${pageSize}`;
+            
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+            
+            const response = await fetchWithAuth(url);
+            
+            if (response.ok) {
+                const data = await response.json();
+                const rolesTable = document.getElementById('rolesTable');
+                
+                if (data.roles && data.roles.length > 0) {
+                    rolesTable.innerHTML = '';
+                    
+                    data.roles.forEach(role => {
+                        const row = document.createElement('tr');
+                        
+                        // ID
+                        const idCell = document.createElement('td');
+                        idCell.textContent = role.id;
+                        
+                        // Name
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = role.name;
+                        
+                        // Description
+                        const descriptionCell = document.createElement('td');
+                        descriptionCell.textContent = role.description || '-';
+                        
+                        // System Role
+                        const systemRoleCell = document.createElement('td');
+                        if (role.is_system_role) {
+                            const badge = document.createElement('span');
+                            badge.className = 'badge bg-info text-dark';
+                            badge.textContent = 'System Role';
+                            systemRoleCell.appendChild(badge);
+                        } else {
+                            systemRoleCell.textContent = 'No';
+                        }
+                        
+                        // Permissions
+                        const permissionsCell = document.createElement('td');
+                        const permissionsCount = role.permissions ? role.permissions.length : 0;
+                        const viewBtn = document.createElement('button');
+                        viewBtn.className = 'btn btn-sm btn-outline-info view-permissions';
+                        viewBtn.textContent = `View ${permissionsCount} Permissions`;
+                        viewBtn.setAttribute('data-role-id', role.id);
+                        viewBtn.setAttribute('data-role-name', role.name);
+                        permissionsCell.appendChild(viewBtn);
+                        
+                        // Created
+                        const createdCell = document.createElement('td');
+                        createdCell.textContent = new Date(role.created_at).toLocaleDateString();
+                        
+                        // Actions
+                        const actionsCell = document.createElement('td');
+                        const btnGroup = document.createElement('div');
+                        btnGroup.className = 'btn-group';
+                        
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'btn btn-sm btn-outline-primary edit-role';
+                        editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+                        editBtn.setAttribute('data-role-id', role.id);
+                        editBtn.setAttribute('data-bs-toggle', 'tooltip');
+                        editBtn.setAttribute('data-bs-title', 'Edit Role');
+                        
+                        btnGroup.appendChild(editBtn);
+                        
+                        // Only super admins can delete roles, and system roles cannot be deleted
+                        if ({{ 'true' if user.is_super_admin() else 'false' }} && !role.is_system_role) {
+                            const deleteBtn = document.createElement('button');
+                            deleteBtn.className = 'btn btn-sm btn-outline-danger delete-role';
+                            deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                            deleteBtn.setAttribute('data-role-id', role.id);
+                            deleteBtn.setAttribute('data-role-name', role.name);
+                            deleteBtn.setAttribute('data-bs-toggle', 'tooltip');
+                            deleteBtn.setAttribute('data-bs-title', 'Delete Role');
+                            
+                            btnGroup.appendChild(deleteBtn);
+                        }
+                        
+                        actionsCell.appendChild(btnGroup);
+                        
+                        // Add cells to row
+                        row.appendChild(idCell);
+                        row.appendChild(nameCell);
+                        row.appendChild(descriptionCell);
+                        row.appendChild(systemRoleCell);
+                        row.appendChild(permissionsCell);
+                        row.appendChild(createdCell);
+                        row.appendChild(actionsCell);
+                        
+                        rolesTable.appendChild(row);
+                    });
+                    
+                    // Initialize tooltips
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                    
+                    // Add event listeners
+                    document.querySelectorAll('.edit-role').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const roleId = this.getAttribute('data-role-id');
+                            editRole(roleId);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.delete-role').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const roleId = this.getAttribute('data-role-id');
+                            const roleName = this.getAttribute('data-role-name');
+                            showDeleteRoleModal(roleId, roleName);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.view-permissions').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const roleId = this.getAttribute('data-role-id');
+                            const roleName = this.getAttribute('data-role-name');
+                            viewRolePermissions(roleId, roleName);
+                        });
+                    });
+                } else {
+                    rolesTable.innerHTML = '<tr><td colspan="7" class="text-center">No roles found</td></tr>';
+                }
+                
+                // Update pagination
+                totalRoles = data.total;
+                totalPages = data.total_pages;
+                currentPage = data.page;
+                
+                updatePagination();
+                updatePaginationInfo(data.page, pageSize, data.total);
+            } else {
+                const rolesTable = document.getElementById('rolesTable');
+                rolesTable.innerHTML = '<tr><td colspan="7" class="text-center">Failed to load roles</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            const rolesTable = document.getElementById('rolesTable');
+            rolesTable.innerHTML = '<tr><td colspan="7" class="text-center">Error loading roles</td></tr>';
+        }
+    }
+    
+    // Update pagination controls
+    function updatePagination() {
+        const pagination = document.getElementById('pagination');
+        pagination.innerHTML = '';
+        
+        // Previous button
+        const prevItem = document.createElement('li');
+        prevItem.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+        
+        const prevLink = document.createElement('a');
+        prevLink.className = 'page-link';
+        prevLink.href = '#';
+        prevLink.textContent = 'Previous';
+        
+        if (currentPage > 1) {
+            prevLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadRoles(currentPage - 1, searchQuery);
+            });
+        }
+        
+        prevItem.appendChild(prevLink);
+        pagination.appendChild(prevItem);
+        
+        // Page numbers
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, startPage + 4);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const pageItem = document.createElement('li');
+            pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            
+            const pageLink = document.createElement('a');
+            pageLink.className = 'page-link';
+            pageLink.href = '#';
+            pageLink.textContent = i;
+            
+            pageLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadRoles(i, searchQuery);
+            });
+            
+            pageItem.appendChild(pageLink);
+            pagination.appendChild(pageItem);
+        }
+        
+        // Next button
+        const nextItem = document.createElement('li');
+        nextItem.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+        
+        const nextLink = document.createElement('a');
+        nextLink.className = 'page-link';
+        nextLink.href = '#';
+        nextLink.textContent = 'Next';
+        
+        if (currentPage < totalPages) {
+            nextLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadRoles(currentPage + 1, searchQuery);
+            });
+        }
+        
+        nextItem.appendChild(nextLink);
+        pagination.appendChild(nextItem);
+    }
+    
+    // Update pagination info text
+    function updatePaginationInfo(page, pageSize, total) {
+        const start = (page - 1) * pageSize + 1;
+        const end = Math.min(start + pageSize - 1, total);
+        
+        document.getElementById('paginationInfo').textContent = `Showing ${start}-${end} of ${total} roles`;
+    }
+    
+    // Load permissions
+    async function loadPermissions() {
+        try {
+            const response = await fetchWithAuth('/api/roles/permissions');
+            
+            if (response.ok) {
+                const data = await response.json();
+                permissions = data.permissions;
+                
+                // Group permissions by resource
+                const permissionsByResource = {};
+                permissions.forEach(permission => {
+                    const resource = permission.resource || 'other';
+                    if (!permissionsByResource[resource]) {
+                        permissionsByResource[resource] = [];
+                    }
+                    permissionsByResource[resource].push(permission);
+                });
+                
+                // Populate create form checkboxes
+                const permissionsContainer = document.getElementById('permissionsCheckboxes');
+                permissionsContainer.innerHTML = '';
+                
+                // Add select all checkbox
+                const selectAllDiv = document.createElement('div');
+                selectAllDiv.className = 'col-md-12 mb-2';
+                
+                const selectAllCheck = document.createElement('div');
+                selectAllCheck.className = 'form-check';
+                
+                const selectAllInput = document.createElement('input');
+                selectAllInput.className = 'form-check-input select-all-permissions';
+                selectAllInput.type = 'checkbox';
+                selectAllInput.id = 'selectAllPermissions';
+                
+                const selectAllLabel = document.createElement('label');
+                selectAllLabel.className = 'form-check-label';
+                selectAllLabel.htmlFor = 'selectAllPermissions';
+                selectAllLabel.innerHTML = '<strong>Select All Permissions</strong>';
+                
+                selectAllCheck.appendChild(selectAllInput);
+                selectAllCheck.appendChild(selectAllLabel);
+                selectAllDiv.appendChild(selectAllCheck);
+                permissionsContainer.appendChild(selectAllDiv);
+                
+                // Add permissions grouped by resource
+                Object.keys(permissionsByResource).sort().forEach(resource => {
+                    const resourceDiv = document.createElement('div');
+                    resourceDiv.className = 'col-md-12 mb-3';
+                    
+                    const resourceTitle = document.createElement('h6');
+                    resourceTitle.textContent = resource.charAt(0).toUpperCase() + resource.slice(1);
+                    resourceDiv.appendChild(resourceTitle);
+                    
+                    const permissionsRow = document.createElement('div');
+                    permissionsRow.className = 'row';
+                    
+                    permissionsByResource[resource].forEach(permission => {
+                        const permissionCol = document.createElement('div');
+                        permissionCol.className = 'col-md-3 mb-2';
+                        
+                        const permissionCheck = document.createElement('div');
+                        permissionCheck.className = 'form-check';
+                        
+                        const permissionInput = document.createElement('input');
+                        permissionInput.className = 'form-check-input permission-checkbox';
+                        permissionInput.type = 'checkbox';
+                        permissionInput.id = `permission_${permission.id}`;
+                        permissionInput.name = 'permissions';
+                        permissionInput.value = permission.name;
+                        
+                        const permissionLabel = document.createElement('label');
+                        permissionLabel.className = 'form-check-label';
+                        permissionLabel.htmlFor = `permission_${permission.id}`;
+                        permissionLabel.textContent = permission.name;
+                        
+                        permissionCheck.appendChild(permissionInput);
+                        permissionCheck.appendChild(permissionLabel);
+                        permissionCol.appendChild(permissionCheck);
+                        permissionsRow.appendChild(permissionCol);
+                    });
+                    
+                    resourceDiv.appendChild(permissionsRow);
+                    permissionsContainer.appendChild(resourceDiv);
+                });
+                
+                // Add select all functionality
+                document.getElementById('selectAllPermissions').addEventListener('change', function() {
+                    const isChecked = this.checked;
+                    document.querySelectorAll('#permissionsCheckboxes .permission-checkbox').forEach(checkbox => {
+                        checkbox.checked = isChecked;
+                    });
+                });
+                
+                // Populate edit form checkboxes
+                const editPermissionsContainer = document.getElementById('editPermissionsCheckboxes');
+                editPermissionsContainer.innerHTML = '';
+                
+                // Add select all checkbox
+                const editSelectAllDiv = document.createElement('div');
+                editSelectAllDiv.className = 'col-md-12 mb-2';
+                
+                const editSelectAllCheck = document.createElement('div');
+                editSelectAllCheck.className = 'form-check';
+                
+                const editSelectAllInput = document.createElement('input');
+                editSelectAllInput.className = 'form-check-input select-all-permissions';
+                editSelectAllInput.type = 'checkbox';
+                editSelectAllInput.id = 'editSelectAllPermissions';
+                
+                const editSelectAllLabel = document.createElement('label');
+                editSelectAllLabel.className = 'form-check-label';
+                editSelectAllLabel.htmlFor = 'editSelectAllPermissions';
+                editSelectAllLabel.innerHTML = '<strong>Select All Permissions</strong>';
+                
+                editSelectAllCheck.appendChild(editSelectAllInput);
+                editSelectAllCheck.appendChild(editSelectAllLabel);
+                editSelectAllDiv.appendChild(editSelectAllCheck);
+                editPermissionsContainer.appendChild(editSelectAllDiv);
+                
+                // Add permissions grouped by resource
+                Object.keys(permissionsByResource).sort().forEach(resource => {
+                    const resourceDiv = document.createElement('div');
+                    resourceDiv.className = 'col-md-12 mb-3';
+                    
+                    const resourceTitle = document.createElement('h6');
+                    resourceTitle.textContent = resource.charAt(0).toUpperCase() + resource.slice(1);
+                    resourceDiv.appendChild(resourceTitle);
+                    
+                    const permissionsRow = document.createElement('div');
+                    permissionsRow.className = 'row';
+                    
+                    permissionsByResource[resource].forEach(permission => {
+                        const permissionCol = document.createElement('div');
+                        permissionCol.className = 'col-md-3 mb-2';
+                        
+                        const permissionCheck = document.createElement('div');
+                        permissionCheck.className = 'form-check';
+                        
+                        const permissionInput = document.createElement('input');
+                        permissionInput.className = 'form-check-input edit-permission-checkbox';
+                        permissionInput.type = 'checkbox';
+                        permissionInput.id = `edit_permission_${permission.id}`;
+                        permissionInput.name = 'edit_permissions';
+                        permissionInput.value = permission.name;
+                        
+                        const permissionLabel = document.createElement('label');
+                        permissionLabel.className = 'form-check-label';
+                        permissionLabel.htmlFor = `edit_permission_${permission.id}`;
+                        permissionLabel.textContent = permission.name;
+                        
+                        permissionCheck.appendChild(permissionInput);
+                        permissionCheck.appendChild(permissionLabel);
+                        permissionCol.appendChild(permissionCheck);
+                        permissionsRow.appendChild(permissionCol);
+                    });
+                    
+                    resourceDiv.appendChild(permissionsRow);
+                    editPermissionsContainer.appendChild(resourceDiv);
+                });
+                
+                // Add select all functionality
+                document.getElementById('editSelectAllPermissions').addEventListener('change', function() {
+                    const isChecked = this.checked;
+                    document.querySelectorAll('#editPermissionsCheckboxes .edit-permission-checkbox').forEach(checkbox => {
+                        checkbox.checked = isChecked;
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Error loading permissions:', error);
+        }
+    }
+    
+    // Edit role
+    async function editRole(roleId) {
+        try {
+            const response = await fetchWithAuth(`/api/roles/${roleId}`);
+            
+            if (response.ok) {
+                const role = await response.json();
+                
+                // Populate form
+                document.getElementById('editRoleId').value = role.id;
+                document.getElementById('editRoleName').value = role.name;
+                document.getElementById('editRoleDescription').value = role.description || '';
+                
+                // Set permissions
+                document.querySelectorAll('#editPermissionsCheckboxes .edit-permission-checkbox').forEach(checkbox => {
+                    checkbox.checked = role.permissions.includes(checkbox.value);
+                });
+                
+                // Check if all permissions are selected
+                const allChecked = document.querySelectorAll('#editPermissionsCheckboxes .edit-permission-checkbox:not(:checked)').length === 0;
+                document.getElementById('editSelectAllPermissions').checked = allChecked;
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('editRoleModal'));
+                modal.show();
+            } else {
+                const data = await response.json();
+                alert(data.detail || 'Failed to load role data');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while loading role data');
+        }
+    }
+    
+    // Show delete role modal
+    function showDeleteRoleModal(roleId, roleName) {
+        document.getElementById('deleteRoleName').textContent = roleName;
+        
+        const confirmButton = document.getElementById('confirmDeleteRole');
+        confirmButton.setAttribute('data-role-id', roleId);
+        
+        const modal = new bootstrap.Modal(document.getElementById('deleteRoleModal'));
+        modal.show();
+    }
+    
+    // View role permissions
+    async function viewRolePermissions(roleId, roleName) {
+        try {
+            const response = await fetchWithAuth(`/api/roles/${roleId}`);
+            
+            if (response.ok) {
+                const role = await response.json();
+                
+                // Set role name
+                document.getElementById('viewRoleName').textContent = `Permissions for ${roleName}`;
+                
+                // Group permissions by resource
+                const permissionsByResource = {};
+                role.permissions.forEach(permissionName => {
+                    const permission = permissions.find(p => p.name === permissionName);
+                    if (permission) {
+                        const resource = permission.resource || 'other';
+                        if (!permissionsByResource[resource]) {
+                            permissionsByResource[resource] = [];
+                        }
+                        permissionsByResource[resource].push(permission);
+                    }
+                });
+                
+                // Populate permissions list
+                const permissionsContainer = document.getElementById('viewPermissionsList');
+                permissionsContainer.innerHTML = '';
+                
+                if (Object.keys(permissionsByResource).length === 0) {
+                    const noPermissionsDiv = document.createElement('div');
+                    noPermissionsDiv.className = 'col-md-12 text-center';
+                    noPermissionsDiv.textContent = 'No permissions assigned to this role.';
+                    permissionsContainer.appendChild(noPermissionsDiv);
+                } else {
+                    // Add permissions grouped by resource
+                    Object.keys(permissionsByResource).sort().forEach(resource => {
+                        const resourceDiv = document.createElement('div');
+                        resourceDiv.className = 'col-md-12 mb-3';
+                        
+                        const resourceTitle = document.createElement('h6');
+                        resourceTitle.textContent = resource.charAt(0).toUpperCase() + resource.slice(1);
+                        resourceDiv.appendChild(resourceTitle);
+                        
+                        const permissionsList = document.createElement('ul');
+                        permissionsList.className = 'list-group';
+                        
+                        permissionsByResource[resource].forEach(permission => {
+                            const permissionItem = document.createElement('li');
+                            permissionItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            
+                            const permissionName = document.createElement('span');
+                            permissionName.textContent = permission.name;
+                            
+                            const permissionDescription = document.createElement('small');
+                            permissionDescription.className = 'text-muted';
+                            permissionDescription.textContent = permission.description || '';
+                            
+                            permissionItem.appendChild(permissionName);
+                            permissionItem.appendChild(permissionDescription);
+                            permissionsList.appendChild(permissionItem);
+                        });
+                        
+                        resourceDiv.appendChild(permissionsList);
+                        permissionsContainer.appendChild(resourceDiv);
+                    });
+                }
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('viewPermissionsModal'));
+                modal.show();
+            } else {
+                const data = await response.json();
+                alert(data.detail || 'Failed to load role permissions');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while loading role permissions');
+        }
+    }
+    
+    // Document ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load initial data
+        loadRoles();
+        loadPermissions();
+        
+        // Search button click
+        document.getElementById('searchButton').addEventListener('click', function() {
+            searchQuery = document.getElementById('searchInput').value.trim();
+            loadRoles(1, searchQuery);
+        });
+        
+        // Search input enter key
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchQuery = this.value.trim();
+                loadRoles(1, searchQuery);
+            }
+        });
+        
+        // Refresh button click
+        document.getElementById('refreshButton').addEventListener('click', function() {
+            document.getElementById('searchInput').value = '';
+            searchQuery = '';
+            loadRoles(1, '');
+        });
+        
+        // Create role form submit
+        document.getElementById('submitCreateRole').addEventListener('click', async function() {
+            const form = document.getElementById('createRoleForm');
+            const formData = new FormData(form);
+            
+            // Get selected permissions
+            const selectedPermissions = [];
+            document.querySelectorAll('#permissionsCheckboxes input[name="permissions"]:checked').forEach(checkbox => {
+                selectedPermissions.push(checkbox.value);
+            });
+            
+            const roleData = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                permissions: selectedPermissions
+            };
+            
+            try {
+                const response = await fetchWithAuth('/api/roles/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(roleData)
+                });
+                
+                if (response.ok) {
+                    // Close modal and reload roles
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('createRoleModal'));
+                    modal.hide();
+                    form.reset();
+                    showNotification('Role created successfully');
+                    loadRoles(1, searchQuery);
+                } else {
+                    const data = await response.json();
+                    alert(data.detail || 'Failed to create role');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while creating the role');
+            }
+        });
+        
+        // Edit role form submit
+        document.getElementById('submitEditRole').addEventListener('click', async function() {
+            const roleId = document.getElementById('editRoleId').value;
+            const form = document.getElementById('editRoleForm');
+            const formData = new FormData(form);
+            
+            // Get selected permissions
+            const selectedPermissions = [];
+            document.querySelectorAll('#editPermissionsCheckboxes input[name="edit_permissions"]:checked').forEach(checkbox => {
+                selectedPermissions.push(checkbox.value);
+            });
+            
+            const roleData = {
+                name: formData.get('name'),
+                description: formData.get('description'),
+                permissions: selectedPermissions
+            };
+            
+            try {
+                const response = await fetchWithAuth(`/api/roles/${roleId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(roleData)
+                });
+                
+                if (response.ok) {
+                    // Close modal and reload roles
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editRoleModal'));
+                    modal.hide();
+                    showNotification('Role updated successfully');
+                    loadRoles(currentPage, searchQuery);
+                } else {
+                    const data = await response.json();
+                    alert(data.detail || 'Failed to update role');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while updating the role');
+            }
+        });
+        
+        // Delete role confirm
+        document.getElementById('confirmDeleteRole').addEventListener('click', async function() {
+            const roleId = this.getAttribute('data-role-id');
+            
+            try {
+                const response = await fetchWithAuth(`/api/roles/${roleId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    // Close modal and reload roles
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteRoleModal'));
+                    modal.hide();
+                    showNotification('Role deleted successfully', 'danger');
+                    loadRoles(currentPage, searchQuery);
+                } else {
+                    const data = await response.json();
+                    alert(data.detail || 'Failed to delete role');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the role');
+            }
+        });
+    });
+</script>
+{% endblock %}
